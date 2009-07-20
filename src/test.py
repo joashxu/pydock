@@ -32,6 +32,7 @@ class App(object):
         item.visible = True
         item.label = "Test"
         
+        
         right = df.add_item( "right" )
         right.default_location = "Document/Right"
         right.default_visible = True
@@ -43,7 +44,7 @@ class App(object):
         
         right.content = lbl 
         right.icon = "gtk-close"
-            
+        
         print "create-layout"
         df.create_layout("test", True)
 

@@ -167,7 +167,7 @@ class DockGroup(DockObject):
                 self.type = type
         else:
             grp = DockGroup(self.frame, new_type)
-            replaced = self.dock_objects[pos]
+            replaced = self.dock_objects[npos]
 
             if add_first:
                 grp.add_object(item)
@@ -290,7 +290,7 @@ class DockGroup(DockObject):
         """
         """
         if len(self._visible_objects) == 0:
-            self._visible_objects = [obj for obj in self.dock_objects if obj.visible]            
+            self._visible_objects = [obj for obj in self.dock_objects if hasattr(obj, 'visible') and obj.visible]            
 
         return self._visible_objects
             
@@ -534,13 +534,14 @@ class DockGroup(DockObject):
         if reg_size > av_size:
             reg_size = av_size
 
-        ratio = (av_size - reg_size) / av_size
-        for ob in self.visible_objects:
-            if ob.size <= ob.min_size:
-                continue
+        if av_size:    
+            ratio = (av_size - reg_size) / av_size
+            for ob in self.visible_objects:
+                if ob.size <= ob.min_size:
+                    continue
 
-            avs = ob.size - ob.min_size
-            ob.size = ob.min_size + avs * ratio
+                avs = ob.size - ob.min_size
+                ob.size = ob.min_size + avs * ratio
             
         return sizes_changed
 
@@ -828,9 +829,9 @@ class DockGroup(DockObject):
                         state = gtk.STATE_NORMAL
 
                 if horiz:
-                    x += self.frame.handle_size + self.handle_padding
+                    x += self.frame.handle_size + self.frame.handle_padding
                 else:
-                    y += self.frame.handle_size + self.handle_padding
+                    y += self.frame.handle_size + self.frame.handle_padding
 
     def resize_item(self, index, new_size):
         """

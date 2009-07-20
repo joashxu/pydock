@@ -118,8 +118,6 @@ class DockFrame(gtk.HBox):
         if self.load_layout(value):
             self._current_layout = value
     
-
-    
     def remove_item(self, item):
         """
         
@@ -241,7 +239,7 @@ class DockFrame(gtk.HBox):
             while i < len(todock):
                 it = todock[i]
                 if self.add_default_item(group, it) != None:
-                    todock.remove_at(i)
+                    todock.remove(it)
                     i -= 1
                 i += 1
     

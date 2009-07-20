@@ -176,7 +176,7 @@ class DockItemContainer(gtk.VBox):
 
         if keyname == "Escape":
             self.frame.hide_placeholder()
-            self.frame.get_toplevel().connect("key-present-event", self.header_key_press)
+            self.frame.get_toplevel().connect("key-press-event", self.header_key_press)
             self.frame.get_toplevel().connect("key-release-event", self.header_key_release)
             self.window.get_display().pointer_ungrab(0)
 

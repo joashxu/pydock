@@ -7,6 +7,8 @@ from dockgrouptype import DockGroupType
 from dockitembehavior import DockItemBehavior
 from placeholderwindow import PlaceHolderWindow
 from dockitemstatus import DockItemStatus
+from dockgroupitem import DockGroupItem
+from dockitem import DockItem
 
 class DockContainer(gtk.Container):
     """
@@ -183,7 +185,7 @@ class DockContainer(gtk.Container):
             dock_group.reset_notebook()
             for dock_object in dock_group.dock_objects:
                 if isinstance(dock_object, DockGroup):
-                    self.get_tabbed_groups(dock_object, tabbed_groups)
+                    self.get_tabbed_groups(dock_object, tabbed_group)
 
     def store_allocation(self):
         """
@@ -309,7 +311,8 @@ class DockContainer(gtk.Container):
             dummy_item = DockGroupItem(self.frame, DockItem(self.frame, "__dummy"))
             gitem = self.layout.find_dock_group_item(item.id)
             dock_delegate(item)
-            dummy_item.parent_group.remove(dummyt_item)
+            if dummy_item.parent_group:
+                dummy_item.parent_group.remove(dummy_item)
             self.relayout_widgets()
         else:            
             gi = self.find_dock_group_item(item.id)

@@ -4,6 +4,7 @@ from gtk import gdk
 from dockobject import DockObject
 from dockitemstatus import DockItemStatus
 from dockposition import DockPosition
+from dockgrouptype import DockGroupType
 
 class DockGroupItem(DockObject):
     """
@@ -77,10 +78,10 @@ class DockGroupItem(DockObject):
             elif px >= rect.width - xdock_margin and self.parent_group.type != DockGroupType.HORIZONTAL:
                 out_rect = gdk.Rectangle(rect.width - xdock_margin, rect.y, xdock_margin, rect.height)
                 pos = DockPosition.RIGHT
-            elif py <= rect.y + ydock_margin and self.parent_group.type != DockGroup.VERTICAL:
+            elif py <= rect.y + ydock_margin and self.parent_group.type != DockGroupType.VERTICAL:
                 out_rect = gdk.Rectangle(rect.x, rect.y, rect.width, ydock_margin)
                 pos = DockPosition.TOP
-            elif py >= rect.bottom - ydock_margin and self.parent_group.type != DockGroupType.VERTICAL:
+            elif py >= rect.y - ydock_margin and self.parent_group.type != DockGroupType.VERTICAL:
                 out_rect = gdk.Rectangle(rect.x, rect.y - ydock_margin, rect.width, ydock_margin)
                 pos = DockPosition.BOTTOM
             else:
@@ -91,10 +92,10 @@ class DockGroupItem(DockObject):
                 pos = DockPosition.CENTER
 
             def mini_function(dit):
-                it = self.parent_group.add_object(dit, pos, self.id)
-                it.set_visible(True)
-
-                self.parent_group.focus_item(it)
+                it = self.parent_group.add_item(dit, pos, self.id)
+                if it:
+                    it.set_visible(True)
+                    self.parent_group.focus_item(it)
 
             dock_delegate = mini_function
             
