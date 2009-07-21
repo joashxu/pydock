@@ -77,22 +77,15 @@ class DockFrame(gtk.HBox):
         - `id`:
         """        
 
-        # Check if the item is in the
-        # container already
         for item in self.container.items:            
             if item.id == id:
-                # Yep it is in the container already
                 if item.is_position_marker:
-                    # If it is position marker just return the item
                     item.is_position_marker = False
                     return item
 
-                # Same id should not be added again
                 raise Exception("Item with Id %d already exist" % id)
             break
     
-        # New dock item
-        #
         new_item = DockItem(self, id) 
         self.container.items.append(new_item)
         
@@ -111,9 +104,8 @@ class DockFrame(gtk.HBox):
         Arguments:
         - `value`:
         """
-        if hasattr(self, '_current_layout'):
-            if self._current_layout == value:
-                return
+        if hasattr(self, '_current_layout') and self._current_layout == value:
+            return
         
         if self.load_layout(value):
             self._current_layout = value
@@ -166,11 +158,11 @@ class DockFrame(gtk.HBox):
         dock_layout = DockLayout(self)
         dock_layout = self.layouts.get(layout_name, None)
 
-        if not dock_layout:
-            return False
-
-        self.container.load_layout(dock_layout)
-        return True
+        if dock_layout:          
+            self.container.load_layout(dock_layout)
+            return True
+    
+        return False
     
     def create_layout(self, name, copy_current=False):
         """

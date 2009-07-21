@@ -31,20 +31,16 @@ class App(object):
         item.content = btn
         item.visible = True
         item.label = "Test"
-        
-        
+                
         right = df.add_item( "right" )
         right.default_location = "Document/Right"
         right.default_visible = True
         right.visible = True
         right.label = "Derecha"
-        right.draw_frame = True;
-        lbl = gtk.Label("HAIYAAA!!!")
-        lbl.show()
-        
-        right.content = lbl 
-        right.icon = "gtk-close"
-        
+        right.draw_frame = True
+        right.Content = gtk.Label( "CONTENIDO" )
+        right.Icon = "gtk-close";
+
         print "create-layout"
         df.create_layout("test", True)
 
@@ -53,9 +49,8 @@ class App(object):
         self.window.add(df)      
         
         print "show-all"
-        self.window.show_all()       
-        
-        
+        self.window.show_all()    
+                
         #self.print_content(self.window)
             
     def print_content(self, widget):

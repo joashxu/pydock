@@ -149,7 +149,6 @@ class DockGroup(DockObject):
 
                 item.parent_group = self.parent_group
                 item.reset_default_size()
-
             else:
                 grp = self.copy(self)
                 self.dock_objects = []
