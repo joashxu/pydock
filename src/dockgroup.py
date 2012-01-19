@@ -69,12 +69,11 @@ class DockGroup(DockObject):
         - `pos`:
         - `rel_item_id`:
         """
-        
         npos = -1
         
         if rel_item_id:
             for n, it in enumerate(self.dock_objects):
-                if it and it.id == rel_item_id:
+                if isinstance(it, DockGroupItem) and it.id == rel_item_id:
                     npos = n
 
         if npos == -1:
@@ -87,7 +86,7 @@ class DockGroup(DockObject):
 
         if pos == DockPosition.LEFT or pos == DockPosition.RIGHT:
             if self.type != DockGroupType.HORIZONTAL:
-                gitem = self.split(DockGroupType.Horizontal, pos == DockPosition.LEFT, obj, npos)
+                gitem = self.split(DockGroupType.HORIZONTAL, pos == DockPosition.LEFT, obj, npos)
             else:
                 gitem = self.insert_object(obj, npos, pos)
         elif pos == DockPosition.TOP or pos == DockPosition.BOTTOM:
@@ -105,7 +104,7 @@ class DockGroup(DockObject):
                 gitem = DockGroupItem(self.frame, obj)
                 self.dock_objects.insert(npos, gitem)
                 gitem.parent_group = self
-
+        
         self.reset_visible_groups()
 
         return gitem
@@ -178,6 +177,8 @@ class DockGroup(DockObject):
             grp.copy_size_from(replaced)
             self.dock_objects[npos] = grp
             grp.parent_group = self
+            
+        return item
     
     def find_group_containing(self, id):
         """
@@ -199,10 +200,10 @@ class DockGroup(DockObject):
         - `id`:
         """
         for ob in self.dock_objects:
-            if ob != None and isinstance(ob, DockGroupItem) and ob.id == id:
+            if isinstance(ob, DockGroupItem) and ob.id == id:
                 return ob
             
-            if ob != None and isinstance(ob, self.__class__):
+            if hasattr(ob, 'find_dock_group_item'):
                 it = ob.find_dock_group_item(id)
                 if it != None:
                     return it
@@ -252,7 +253,7 @@ class DockGroup(DockObject):
     
         return False
 
-    def Remove(self, obj):
+    def remove(self, obj):
         """
         
         Arguments:
@@ -283,13 +284,20 @@ class DockGroup(DockObject):
             self.reset_visible_groups()
             self.parent_group.reset_visible_groups
     
-
+    @property
+    def visible(self):
+        for ob in self.dock_objects:
+            if ob.visible:
+                return True
+            
+        return False
+    
     @property
     def visible_objects(self):
         """
         """
         if len(self._visible_objects) == 0:
-            self._visible_objects = [obj for obj in self.dock_objects if hasattr(obj, 'visible') and obj.visible]            
+            self._visible_objects = [obj for obj in self.dock_objects if hasattr(obj, 'visible') and obj.visible]
 
         return self._visible_objects
             
@@ -321,7 +329,7 @@ class DockGroup(DockObject):
         """
         DockObject.restore_allocation(self)
 
-        alloc_status = self.AllocStatus.RESTORE_PENDING if self.size >= 0 else self.AllocStatus.NOT_SET
+        self.alloc_status = self.AllocStatus.RESTORE_PENDING if self.size >= 0 else self.AllocStatus.NOT_SET
 
         for ob in self.dock_objects:
             ob.restore_allocation()
@@ -361,7 +369,7 @@ class DockGroup(DockObject):
                 tabs_height = self.bound_tab_strip.size_request().height
                 self.bound_tab_strip.size_allocate(
                     gdk.Rectangle(new_alloc.x,
-                                  new_alloc.bottom - self.tabs_height,
+                                  new_alloc.height - self.tabs_height,
                                   new_alloc.width,
                                   self.tabs_height))
             
@@ -392,12 +400,12 @@ class DockGroup(DockObject):
 
         if self.alloc_status == self.AllocStatus.VALID and new_alloc == old_alloc:
             if self.check_min_sizes():
-                self.alloc_status = self.AllocStatus.new_size_request
+                self.alloc_status = self.AllocStatus.NEW_SIZE_REQUEST
             else:
                 for ob in self.visible_objects:
-                    ins = ob.alloc_size
+                    ins = int(ob.alloc_size)
                     if horiz:
-                        rect = gdk.Rectangle(pos, self.allocation.x, ins, self.allocation.height)
+                        rect = gdk.Rectangle(pos, self.allocation.y, ins, self.allocation.height)
                     else:
                         rect = gdk.Rectangle(self.allocation.x, pos, self.allocation.width, ins)
                     ob.size_allocate(rect)
@@ -407,7 +415,9 @@ class DockGroup(DockObject):
 
         real_size = self.get_real_size(self.visible_objects)
 
-        if self.alloc_status == self.AllocStatus.NEW_SIZE_REQUEST:
+        if self.alloc_status == self.AllocStatus.NOT_SET:
+            self.calc_new_sizes()
+        elif self.alloc_status != self.AllocStatus.NEW_SIZE_REQUEST:
             change = 0.0
 
             if horiz:
@@ -415,8 +425,8 @@ class DockGroup(DockObject):
             else:
                 change = float(new_alloc.height) / float(old_alloc.height)
 
-            tsize = 0
-            rsize = 0
+            tsize = 0.0
+            rsize = 0.0
 
             for ob in self.visible_objects:
                 tsize += ob.pref_size
@@ -427,17 +437,16 @@ class DockGroup(DockObject):
                     ob.size = ob.pref_size = (ob.pref_size / tsize) * float(real_size)
                 else:
                     ob.size = ob.size * change
-                    ob.pref_size = ob.pref_size * change
+                    ob.pref_size =  ob.pref_size * change
 
                 ob.default_size = ob.default_size * change
+                
 
             self.check_min_sizes()
 
-
         self.alloc_status = self.AllocStatus.VALID
 
-        ts = 0
-        
+        ts = 0        
         for n, ob in enumerate(self.visible_objects):
             ins = int(ob.size)
 
@@ -455,7 +464,7 @@ class DockGroup(DockObject):
                 ob.size_allocate(gdk.Rectangle(pos, self.allocation.y, ins, self.allocation.height))
             else:
                 ob.size_allocate(gdk.Rectangle(self.allocation.x, pos, self.allocation.width, ins))
-
+            
             pos += ins + self.frame.total_handle_size
     
     def get_real_size(self, objects):
@@ -474,8 +483,8 @@ class DockGroup(DockObject):
             if self.allocation:
                 real_size = self.allocation.height
 
-        if len(self.dock_objects) > 1:
-            real_size -= (self.frame.total_handle_size * (len(self.dock_objects) - 1))
+        if len(objects) > 1:
+            real_size -= (self.frame.total_handle_size * (len(objects) - 1))
 
         return real_size
     
@@ -526,7 +535,6 @@ class DockGroup(DockObject):
             else:
                 av_size += ob.size - ob.min_size
 
-
         if not sizes_changed:
             return False
 
@@ -540,7 +548,7 @@ class DockGroup(DockObject):
                     continue
 
                 avs = ob.size - ob.min_size
-                ob.size = ob.min_size + avs * ratio
+                ob.size = ob.min_size + avs * ratio                
             
         return sizes_changed
 
@@ -789,15 +797,17 @@ class DockGroup(DockObject):
         - `current_handle_index`:
         - `invalidate_only`:
         - `draw_children_sep`:
-        """
-        
+        """        
         if self.type == DockGroupType.TABBED or len(self.visible_objects) == 0:
             return
 
         last = self.visible_objects[-1]
     
-        horiz = type == DockGroupType.HORIZONTAL
-        x, y = self.allocation.x, self.allocation.y
+        horiz = self.type == DockGroupType.HORIZONTAL
+        if self.allocation != None:
+            x, y = self.allocation.x, self.allocation.y
+        else:
+            x, y = 0, 0
 
         hw = self.frame.handle_size if horiz else self.allocation.width
         hh = self.allocation.height if horiz else self.frame.handle_size
@@ -805,17 +815,17 @@ class DockGroup(DockObject):
         orientation = gtk.ORIENTATION_VERTICAL if horiz else gtk.ORIENTATION_HORIZONTAL
 
         for n, ob in enumerate(self.visible_objects):
-            if isinstance(ob, self.__class__) and draw_children_sep:
-                ob.draw_separators(exposed_area, 
+            if hasattr(ob, 'draw_separators') and draw_children_sep:
+                ob.draw_separators(exposed_area,
                                    current_handle_grp,
                                    current_handle_index,
                                    invalidate_only)
 
             if ob != last:
                 if horiz:
-                    x += ob.allocation.width + self.frame.handle_padding
+                    x += (ob.allocation.width if ob.allocation != None else 0) + self.frame.handle_padding
                 else:
-                    y += ob.allocation.height + self.frame.handle_padding
+                    y += (ob.allocation.height if ob.allocation != None else 0) + self.frame.handle_padding
 
                 if invalidate_only:
                     self.frame.container.queue_draw_area(x, y, hw, hh)
@@ -826,6 +836,16 @@ class DockGroup(DockObject):
                         state = gtk.STATE_PRELIGHT
                     else:
                         state = gtk.STATE_NORMAL
+                        
+                    self.frame.style.paint_handle(self.frame.container.window, 
+                                                  state, 
+                                                  gtk.SHADOW_NONE,
+                                                  exposed_area,
+                                                  self.frame,
+                                                  "paned",
+                                                  x, y,
+                                                  hw, hh,
+                                                  orientation)
 
                 if horiz:
                     x += self.frame.handle_size + self.frame.handle_padding
@@ -908,103 +928,122 @@ class DockGroup(DockObject):
         """
         
         dock_delegate, rect = None, None
-        px_py_in_allocation = False
 
-        if self.allocation.x <= px <= self.allocation.width and\
-            self.allocation.y <= py <= self.allocation.height:
-            px_py_in_allocation = True
-             
-        if not px_py_in_allocation or len(self.visible_objects) == 0:
+        allocation_left = self.allocation.x
+        allocation_right = self.allocation.x + self.allocation.width
+        allocation_top = self.allocation.y
+        allocation_bottom = self.allocation.height
+        
+        px_in_allocation = True if self.allocation.x <= px <= allocation_right else False
+        py_in_allocation = True if self.allocation.y <= py <= allocation_bottom else False
+                  
+        if not (px_in_allocation and py_in_allocation) or len(self.visible_objects) == 0:
             return dock_delegate, rect
 
         if self.type == DockGroupType.TABBED:
             return self.visible_objects.get_dock_target(item, px, py, self.allocation)
         elif self.type == DockGroupType.HORIZONTAL:
-            if px >= self.allocation.width - self.frame.GROUP_DOCK_SEP_SIZE:
-                
-                def mini_function(it):
-                    return self.dock_target(it, len(self.dock_objects))
-                    
-                dock_delegate = mini_function
-            
-                rect = gdk.Rectangle(self.allocation.width - self.frame.GROUP_DOCK_SEP_SIZE,
-                                     self.allocation.y,
-                                     self.frame.GROUP_DOCK_SEP_SIZE,
-                                     self.allocation.height)
-                
-            elif px <= self.allocation.x + self.frame.GROUP_DOCK_SEP_SIZE:
-                
-                def mini_function(it):
-                    return self.dock_target(it, 0)
-
-                dock_delegate = mini_function
-                
-                rect = gdk.Rectangle(self.allocation.x,
-                                     self.allocation.y,
-                                     self.frame.GROUP_DOCK_SEP_SIZE,
-                                     self.allocation.height)
-
-            for n, ob in enumerate(self.visible_objects):
-                if n < len(self.visible_objects) - 1 and\
-                   px >= ob.allocation.width - self.frame.GROUP_DOCK_SEP_SIZE/2 and\
-                   px <= ob.allocation.width + self.frame.GROUP_DOCK_SEP_SIZE/2:
-                                       
-                    dn = self.dock_objects.index(ob)
-                    
-                    def mini_function(it):
-                        return self.dock_target(it, dn + 1)
-                    
-                    dock_delegate = mini_function
-
-                    rect = gdk.Rectangle(ob.allocation.width - self.frame.GROUP_DOCK_SEP_SIZE/2,
-                                         self.allocation.y,
-                                         self.frame.GROUP_DOCK_SEP_SIZE, 
-                                         self.allocation.height)
-
-                else:
-                    
-                    dock_delegate, rect = ob.get_dock_target(item, px, py)
-
-        elif self.type == DockGroupType.VERTICAL:
-            if py >= self.allocation.bottom - self.frame.GROUP_DOCK_SEP_SIZE:
-                
+            if px >= allocation_right - self.frame.GROUP_DOCK_SEP_SIZE:
+                # Dock to right
                 def mini_function(it):
                     self.dock_target(it, len(self.dock_objects))
-
-                rect = gdk.Rectangle(self.allocation.x,
-                                     self.allocation.bottom - self.fram.GROUP_DOCK_SEP_SIZE,
-                                     self.allocation.width,
-                                     self.frame.GROUP_DOCK_SEP_SIZE)
-            elif py <= self.allocation.height + self.frame.GROUP_DOCK_SEP_SIZE:
+                    return
+                    
+                dock_delegate = mini_function
+            
+                rect = gdk.Rectangle(allocation_right - self.frame.GROUP_DOCK_SEP_SIZE,
+                                     self.allocation.y,
+                                     self.frame.GROUP_DOCK_SEP_SIZE,
+                                     self.allocation.height)
                 
+            elif px <= allocation_left + self.frame.GROUP_DOCK_SEP_SIZE:
+                # Dock to left
                 def mini_function(it):
                     self.dock_target(it, 0)
+                    return
 
+                dock_delegate = mini_function
+                
+                rect = gdk.Rectangle(allocation_left,
+                                     self.allocation.y,
+                                     self.frame.GROUP_DOCK_SEP_SIZE,
+                                     self.allocation.height)
+            else:
+                for n, ob in enumerate(self.visible_objects):
+                    alloc_right = ob.allocation.x + ob.allocation.width
+                    if n < len(self.visible_objects) - 1 and\
+                       px >= alloc_right - self.frame.GROUP_DOCK_SEP_SIZE/2 and\
+                       px <= alloc_right + self.frame.GROUP_DOCK_SEP_SIZE/2:
+                                           
+                        dn = self.dock_objects.index(ob)
+                        
+                        def mini_function(it):
+                            self.dock_target(it, dn + 1)
+                            return
+                        
+                        dock_delegate = mini_function
+    
+                        rect = gdk.Rectangle(alloc_right - self.frame.GROUP_DOCK_SEP_SIZE/2,
+                                             self.allocation.y,
+                                             self.frame.GROUP_DOCK_SEP_SIZE, 
+                                             self.allocation.height)
+                        break
+                    else:
+                        dock_delegate, rect = ob.get_dock_target(item, px, py)
+                        if dock_delegate and rect:
+                            break
+
+        elif self.type == DockGroupType.VERTICAL:
+            if py >= allocation_bottom - self.frame.GROUP_DOCK_SEP_SIZE:
+                # Dock to bottom
+                def mini_function(it):
+                    self.dock_target(it, len(self.dock_objects))
+                    return
+
+                dock_delegate = mini_function
+                
                 rect = gdk.Rectangle(self.allocation.x,
-                                     self.allocation.height,
+                                     allocation_bottom - self.frame.GROUP_DOCK_SEP_SIZE,
                                      self.allocation.width,
                                      self.frame.GROUP_DOCK_SEP_SIZE)
+                
+            elif py <= allocation_top + self.frame.GROUP_DOCK_SEP_SIZE:
+                # Dock to top
+                def mini_function(it):
+                    self.dock_target(it, 0)
+                    return
+                
+                dock_delegate = mini_function
 
-            
-            for n, ob in enumerate(self.visible_objects):
-                if n < len(self.visible_objects) - 1 and\
-                   px >= ob.allocation.bottom - self.frame.GROUP_DOCK_SEP_SIZE/2 and\
-                   py <= ob.allocation.bottom + self.frame.GROUP_DOCK_SEP_SIZE/2:
-                    
-                    dn = self.dock_objects.index(ob)
-
-                    def mini_function(it):
-                        self.dock_target(it, dn + 1)
-
-                    rect = gdk.Rectangle(self.allocation.x,
-                                         ob.allocation.bottom - self.frame.GROUP_DOCK_SEP_SIZE/2,
-                                         self.allocation.width,
-                                         self.frame.GROUP_DOCK_SEP_SIZE)
-                else:
-                    dock_delegate, rect = ob.get_dock_target(item, px, py)
-
+                rect = gdk.Rectangle(self.allocation.x,
+                                     allocation_top,
+                                     self.allocation.width,
+                                     self.frame.GROUP_DOCK_SEP_SIZE)
+            else:
+                for n, ob in enumerate(self.visible_objects):
+                    if n < len(self.visible_objects) - 1 and\
+                       px >= ob.allocation.height - self.frame.GROUP_DOCK_SEP_SIZE/2 and\
+                       py <= ob.allocation.height + self.frame.GROUP_DOCK_SEP_SIZE/2:
+                        
+                        dn = self.dock_objects.index(ob)
+    
+                        def mini_function(it):
+                            self.dock_target(it, dn + 1)
+                            return
+    
+                        dock_delegate = mini_function
+                        
+                        rect = gdk.Rectangle(self.allocation.x,
+                                             ob.allocation.height - self.frame.GROUP_DOCK_SEP_SIZE/2,
+                                             self.allocation.width,
+                                             self.frame.GROUP_DOCK_SEP_SIZE)
+                        break
+                    else:
+                        dock_delegate, rect = ob.get_dock_target(item, px, py)
+                        if dock_delegate and rect:
+                            break
+                
         return dock_delegate, rect
-
     
     def replace_item(self, ob1, ob2):
         """

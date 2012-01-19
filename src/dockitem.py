@@ -3,6 +3,7 @@ from gtk import gdk
 
 from dockitemcontainer import DockItemContainer
 from dockitembehavior import DockItemBehavior
+from dockitemstatus import DockItemStatus
 
 class DockItem(object):
     """
@@ -51,8 +52,8 @@ class DockItem(object):
     @label.setter
     def label(self, value):
         self._label = value
-        if self.widget != None:
-            self.widget.label = value
+        if self._widget != None:
+            self._widget.label = value
         self.frame.update_title(self)
         if self.floating_window != None:
             self.floating_window.set_title(self.get_window_title())
@@ -99,7 +100,7 @@ class DockItem(object):
     def content(self, value):
         self._content = value
         if not self.getting_content and self._widget != None:
-            self.widget.update_content
+            self._widget.update_content()
 
     @property
     def has_widget(self):
@@ -112,8 +113,8 @@ class DockItem(object):
     @behavior.setter
     def behavior(self, value):
         self._behavior = value
-        if self.widget != None:
-            self.widget.update_behavior()
+        if self._widget != None:
+            self._widget.update_behavior()
 
     def present(self, give_focus):
         if self.dockbar_item != None:
@@ -126,12 +127,12 @@ class DockItem(object):
         if self._widget == None:
             return False
 
-        return self.widget.parent != None and self.widget.props.visible
+        return self._widget.parent != None and self._widget.props.visible
 
     def set_focus(self):
         self.widget.child_focus(gtk.DIR_TAB_FORWARD)
 
-        win = self.widget.get_toplevel()
+        win = self._widget.get_toplevel()
         if win == None:
             return
 
@@ -173,8 +174,8 @@ class DockItem(object):
             self.floating_window.hide()
         elif self.dockbar_item != None:
             self.dockbar_item.hide()
-        elif self.widget != None:
-            self.widget.hide()
+        elif self._widget != None:
+            self._widget.hide()
 
     def set_float_mode(self, rect):
         self.reset_bar_undock_mode()
@@ -187,11 +188,11 @@ class DockItem(object):
             self.floating_window.set_title(self.get_window_title())
             self.floating_window.props.transient_for = self.frame.get_toplevel()
             self.floating_window.props.type_hint = gtk.gdk.WINDOW_TYPE_HINT_UTILITY
-            self.floating_window.add(self.widget)
+            self.floating_window.add(self._widget)
 
             def mini_function(o, a):
                 if self.behavior == DockItemBehavior.CANT_CLOSE:
-                    self.status = DockItemStatus.Dockable
+                    self.status = DockItemStatus.DOCKABLE
                 else:
                     self.visible = False
 
@@ -200,7 +201,7 @@ class DockItem(object):
             self.floating_window.resize(rect.width, rect.height)
             self.floating_window.show()
             self.widget.update_behavior()
-            self.widget.show()
+            self.widget.show()            
 
     def reset_float_mode(self):
         if self.floating_window != None:
@@ -208,7 +209,7 @@ class DockItem(object):
             self.floating_window.destroy()
             self.floating_window = None
 
-            self.widget.update_behavior()
+            self._widget.update_behavior()
 
     @property
     def floating_position(self):
@@ -226,31 +227,31 @@ class DockItem(object):
 
     def set_autohide_mode(self, pos, size):
         self.reset_mode()
-        if self.widget != None:
-            self.widget.unparent()
+        if self._widget != None:
+            self._widget.unparent()
 
         self.dockbar_item = self.frame.bar_dock(pos, self, size)
-        if self.widget != None:
-            self.widget.update_behavior()
+        if self._widget != None:
+            self._widget.update_behavior()
 
     def reset_bar_undock_mode(self):
         if self.dockbar_item != None:
             self.dockbar_item.close()
             self.dockbar_item = None
-            if self.widget != None:
-                self.widget.update_behavior()
+            if self._widget != None:
+                self._widget.update_behavior()
 
     @property
     def autohide_size(self):
         if self.dockbar_item != None:
-            return dockbar_item.size
+            return self.dockbar_item.size
         else:
             return -1
 
-    def get_window_title(self):
+    def get_window_title(self):        
         return self.label
 
-    def show_dock_popup_menu(self, time):
+    def show_dock_popupmenu(self, time):
         menu = gtk.Menu()
 
         if (self.behavior & DockItemBehavior.CANT_CLOSE) == 0:
@@ -258,10 +259,10 @@ class DockItem(object):
             def activated_delegate(wdg, evt):
                 self.visible = False
 
-            mitem.connect("activated", activated_delegated)
+            mitem.connect("activate", activated_delegate)
 
         citem = gtk.CheckMenuItem("Dockable")
-        citem.props.active = self.status = DockItemStatus.DockItemStatus.DOCKABLE
+        citem.props.active = self.status = DockItemStatus.DOCKABLE
         citem.props.draw_as_radio = True
 
         def toggled_delegate(wdg, evt):
@@ -271,7 +272,7 @@ class DockItem(object):
         menu.append(citem)
 
         if (self.behavior & DockItemBehavior.NEVER_FLOATING) == 0:
-            citem = CheckMenuItem("Floating")
+            citem = gtk.CheckMenuItem("Floating")
             citem.props.active = self.status = DockItemStatus.FLOATING
             citem.props.draw_as_radio = True
 
@@ -282,9 +283,9 @@ class DockItem(object):
             menu.append(citem)
 
         if (self.behavior & DockItemBehavior.CANT_AUTOHIDE) == 0:
-            citem = CheckMenuItem("Auto Hide")
+            citem = gtk.CheckMenuItem("Auto Hide")
             citem.props.active = self.status = DockItemStatus.AUTOHIDE
-            citem.props.draw_as_ratio = True
+            citem.props.draw_as_radio = True
 
             def toggled_delegate(wdg, evt):
                 self.status = DockItemStatus.FLOATING

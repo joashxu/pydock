@@ -3,6 +3,9 @@ import gtk
 from dockframe import DockFrame 
 from dockbar import DockBar
 
+from dockitembehavior import DockItemBehavior
+from dockitemstatus import DockItemStatus
+
 class App(object):
     """
     """
@@ -20,38 +23,54 @@ class App(object):
         df.default_item_height = 100
         df.default_item_width = 100
         df.props.homogeneous = False
-
-        print "add-item"
+    
         item = df.add_item("Document")
         
         btn = gtk.Button("hello")
         btn.show()
         
-        print "add-content"
-        item.content = btn
+        item.content = gtk.TextView()
         item.visible = True
         item.label = "Test"
+        item.expand = True
+        item.behavior = DockItemBehavior.LOCKED
                 
         right = df.add_item( "right" )
         right.default_location = "Document/Right"
         right.default_visible = True
         right.visible = True
-        right.label = "Derecha"
+        right.behavior = DockItemBehavior.CANT_CLOSE | DockItemBehavior.NEVER_FLOATING
+        right.label = "Right window"
         right.draw_frame = True
-        right.Content = gtk.Label( "CONTENIDO" )
-        right.Icon = "gtk-close";
-
-        print "create-layout"
+        right.content = gtk.Label("Content")
+        right.icon = "gtk-close";
+        
+        rb = df.add_item( "right_left" )
+        rb.default_location = "right/Left"
+        rb.default_visible = True
+        rb.visible = True
+        rb.label = "List"
+        rb.draw_frame = True
+        rb.content = gtk.TreeView()
+        rb.icon = "gtk-new";
+        
+        btm = df.add_item( "bottom" )
+        btm.default_location = "Document/Bottom"
+        btm.default_visible = True
+        btm.visible = True
+        btm.label = "Bottom list"
+        btm.draw_frame = True
+        btm.content = gtk.TreeView()
+        btm.icon = "gtk-new";
+        
         df.create_layout("test", True)
 
         df.current_layout = "test"
         
-        self.window.add(df)      
-        
-        print "show-all"
+        self.window.add(df)                      
         self.window.show_all()    
-                
-        #self.print_content(self.window)
+        
+        right.status = DockItemStatus.AUTOHIDE
             
     def print_content(self, widget):
         if hasattr(widget, 'get_children'):

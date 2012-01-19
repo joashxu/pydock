@@ -39,30 +39,31 @@ class AutoHideBox(DockFrameTopLevel):
         self.orig_pos = 0
         self.target_pos = 0
 
+        DockFrameTopLevel.__init__(self)
 
         self.props.events = self.props.events | gdk.ENTER_NOTIFY_MASK | gdk.LEAVE_NOTIFY_MASK
 
         fr = None
         sep_box = gtk.EventBox()
 
-        if horiz:
+        if self.horiz:
             fr = gtk.HBox()
 
-            def delegate():
+            def horizontal_realize_delegate(event):
                 sep_box.window.set_cursor(self.resize_cursor_w)
 
-            sep_box.connect("realize", delegate)
+            sep_box.connect("realize", horizontal_realize_delegate)
             sep_box.props.width_request = self.grip_size
         else:
             fr = gtk.VBox()
 
-            def delegate():
+            def vertical_realize_delegate(event):
                 sep_box.window.set_cursor(self.resize_cursor_h)
 
-            sep_box.connect("realize", delegate)
+            sep_box.connect("realize", vertical_realize_delegate)
             sep_box.props.height_request = self.grip_size
 
-        sep_box.props.events = gdk.ALL_EVENT_MASK
+        sep_box.props.events = gdk.ALL_EVENTS_MASK
 
         if pos == gtk.POS_LEFT or pos == gtk.POS_TOP:
             fr.pack_end(sep_box, False, False, 0)
@@ -72,32 +73,32 @@ class AutoHideBox(DockFrameTopLevel):
         self.add(fr)
         self.show_all()
 
-        self.scrollable = ScroballableContainer()
+        self.scrollable = ScrollableContainer()
         self.scrollable.scroll_mode = False
         self.scrollable.show()
         self.scrollable.add(item.widget)
         item.widget.show()
 
-        fr.pack_start(scrollable, True, True, 0)
+        fr.pack_start(self.scrollable, True, True, 0)
 
         sep_box.connect("button-press-event", self.on_size_button_press)
         sep_box.connect("button-release-event", self.on_size_button_release)
         sep_box.connect("motion-notify-event", self.on_size_motion)
         sep_box.connect("expose-event", self.on_grip_expose)
 
-        def enter_delegate():
+        def enter_delegate(widget, evt):
             self.inside_grip = True
             sep_box.queue_draw()
 
         sep_box.connect("enter-notify-event", enter_delegate)
 
-        def leave_delegate():
+        def leave_delegate(widget, evt):
             self.inside_grip = False
             sep_box.queue_draw()
 
         sep_box.connect("leave-notify-event", leave_delegate)
 
-        self.connect("hide", self.on_hidden)
+        self.connect("hide", self.on_hide_event)
 
     def animate_show(self):
         """
@@ -106,20 +107,20 @@ class AutoHideBox(DockFrameTopLevel):
         self.scrollable.scroll_mode = True
         self.scrollable.set_size(self.position, self.target_size)
 
-        if position == gtk.POS_LEFT:
+        if self.position == gtk.POS_LEFT:
             self.props.width_request = 0
-        elif position == gtk.POS_RIGHT:
+        elif self.position == gtk.POS_RIGHT:
             self.target_pos = self.x = self.x + self.props.width_request
             self.props.width_request = 0
-        elif position == gtk.POS_TOP:
+        elif self.position == gtk.POS_TOP:
             self.props.height_request = 0
-        elif position == gtk.POS_BOTTOM:
+        elif self.position == gtk.POS_BOTTOM:
             self.target_pos = self.y = self.y + self.props.height_request
             self.props.height_request = 0
 
         gobject.timeout_add(10, self.run_animate_show)
     
-     def animate_hide(self):
+    def animate_hide(self):
          """
          """
          self.animating = True
@@ -128,7 +129,7 @@ class AutoHideBox(DockFrameTopLevel):
 
          gobject.timeout_add(10, self.run_animate_hide)
 
-     def run_animate_show(self):
+    def run_animate_show(self):
          """
          """
          if not self.animating:
@@ -163,30 +164,30 @@ class AutoHideBox(DockFrameTopLevel):
          
          return False
      
-     def run_animate_hide(self):
+    def run_animate_hide(self):
          """
          """
          
          if not self.animating:
              return False
 
-         if position == gtk.POS_LEFT:
+         if self.position == gtk.POS_LEFT:
              ns = self.props.width_request - 1 - self.props.width_request / 3
              if ns > 0:
                  self.props.width_request = ns
                  return True
-         elif position == gtk.POS_RIGHT:
+         elif self.position == gtk.POS_RIGHT:
              ns = self.props.width_request - 1 - self.props.width_request / 3
              if ns > 0:
                  self.props.width_request = ns
                  self.x = self.target_pos - ns
                  return True
-         elif position == gtk.POS_TOP:
+         elif self.position == gtk.POS_TOP:
              ns = self.props.height_request - 1 - self.props.height_request / 3
              if ns > 0:
                  self.props.height_request = ns
                  return True
-         elif position == gtk.POS_BOTTOM:
+         elif self.position == gtk.POS_BOTTOM:
              ns = self.props.height_request - 1 - self.props.height_request / 3
              if ns > 0:
                  self.props.height_request = ns
@@ -198,19 +199,19 @@ class AutoHideBox(DockFrameTopLevel):
 
          return False
 
-     def on_hide_event(self):
+    def on_hide_event(self, widget):
          """
          """
          self.animating = False
      
      
-     @property
-     def size(self):
+    @property
+    def size(self):
          """
          """
-         return self.props.width_request if horiz else self.props.height_request
+         return self.props.width_request if self.horiz else self.props.height_request
 
-     def on_size_button_press(self, ob, event):
+    def on_size_button_press(self, ob, event):
          """
          
          Arguments:
@@ -233,7 +234,7 @@ class AutoHideBox(DockFrameTopLevel):
 
              self.resizing = True
 
-     def on_size_button_release(self, ob, event):
+    def on_size_button_release(self, ob, event):
          """
          
          Arguments:
@@ -242,7 +243,7 @@ class AutoHideBox(DockFrameTopLevel):
          """
          self.resizing = False
 
-     def on_size_motion(self, ob, event):
+    def on_size_motion(self, ob, event):
          """
          
          Arguments:
@@ -256,7 +257,7 @@ class AutoHideBox(DockFrameTopLevel):
                  new_size = self.orig_size + diff
 
                  if new_size < self.get_child().props.width_request:
-                     new_size = self.get_child().props.width_request:
+                     new_size = self.get_child().props.width_request
 
                  if not self.start_pos:
                      self.x = self.orig_pos - new_size
@@ -265,18 +266,19 @@ class AutoHideBox(DockFrameTopLevel):
              else:
                  n, new_pos = self.get_toplevel().get_pointer()
                  diff = new_pos - self.resize_pos if self.start_pos else self.resize_pos - new_pos
-                 
-                if new_size < self.get_child().props.height_request:
-                    new_size = self.get_child().props.height_request
+                 new_size = self.orig_size + diff
 
-                if not self.start_pos:
-                    self.y = self.orig_pos - new_size
+                 if new_size < self.get_child().props.height_request:
+                     new_size = self.get_child().props.height_request
+
+                 if not self.start_pos:
+                     self.y = self.orig_pos - new_size
                     
-                self.props.height_request = new_size
+                 self.props.height_request = new_size
 
              self.frame.queue_resize()
 
-     def on_grip_expose(self, ob, event):
+    def on_grip_expose(self, ob, event):
          """
          
          Arguments:
@@ -290,36 +292,37 @@ class AutoHideBox(DockFrameTopLevel):
              handle_rect.height -= 4
              handle_rect.y += 1
              
-             gtk.Style.paint_hline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.width, self.grip_size - 2)
+             ob.style.paint_hline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.width, self.grip_size - 2)
 
          elif self.position == gtk.POS_BOTTOM:
              handle_rect.height -= 4
              handle_rect.y += 3
-
-             gtk.Style.paint_hline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.width, 0)
+             
+             ob.style.paint_hline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.width, 0)
 
          elif self.position == gtk.POS_LEFT:
              handle_rect.width -= 4
              handle_rect.x += 1
              
-             gtk.Style.paint_vline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.height, self.grip_size - 2)
+             ob.style.paint_vline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.height, self.grip_size - 2)
 
          elif self.position == gtk.POS_RIGHT:
              handle_rect.width -= 4
              handle_rect.x += 3
 
-             gtk.Style.paint_vline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.height, 0)
+             ob.style.paint_vline(ob.window, gtk.STATE_NORMAL, event.area, ob, "", 0, ob.allocation.height, 0)
 
          orientation = gtk.ORIENTATION_VERTICAL if self.horiz else gtk.ORIENTATION_HORIZONTAL
-         s = gtk.STATE_PREFLIGHT if self.inside_grip else gtk.STATE_NORMAL
+         s = gtk.STATE_PRELIGHT if self.inside_grip else gtk.STATE_NORMAL
 
-         gtk.Style.paint_handle(ob.window, s, gtk.SHADOW_NONE, event.area, w, "paned", handle_rect.x, handle_rect.height, handle_rect.width, handle_rect.height, orientation)
+         ob.style.paint_handle(ob.window, s, gtk.SHADOW_NONE, event.area, ob, "paned", handle_rect.x, handle_rect.y, handle_rect.width, handle_rect.height, orientation)
          
-     
+class ScrollableContainer(gtk.EventBox):
+    """
+    """
 
-class Scrollable(gtk.EventBox):
-    """
-    """
+    __gsignals__ = {'size-request': 'override',
+                    'size-allocate': 'override'}
 
     def __init__(self ):
         """
@@ -365,13 +368,12 @@ class Scrollable(gtk.EventBox):
         Arguments:
         - `req`:
         """
-
         gtk.EventBox.do_size_request(self, req)
 
         if self.scroll_mode or self.get_child() == None:
             req.width, req.height = 0, 0
         else:
-            req.width, req.height = self.get_child().get_size_request
+            req.width, req.height = self.get_child().size_request()
 
     def do_size_allocate(self, alloc):
         """
@@ -379,7 +381,6 @@ class Scrollable(gtk.EventBox):
         Arguments:
         - `alloc`:
         """
-        
         if self.scroll_mode and self.get_child() != None:
             if self.expand_pos == gtk.POS_BOTTOM:
                 alloc = gdk.Rectangle(alloc.x, alloc.y, alloc.width, self.target_size)
@@ -389,7 +390,5 @@ class Scrollable(gtk.EventBox):
                 alloc = gdk.Rectangle(alloc.x, alloc.y, self.target_size, alloc.height)
             elif self.expand_pos == gtk.POS_LEFT:
                 alloc = gdk.Rectangle(alloc.x - self.target_size + alloc.width, alloc.y, self.target_size, alloc.height)
-
-
+                
         gtk.EventBox.do_size_allocate(self, alloc)
-    

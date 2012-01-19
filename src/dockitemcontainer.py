@@ -6,9 +6,9 @@ from dockitemstatus import DockItemStatus
 
 class DockItemContainer(gtk.VBox):
 
-    pix_close = gdk.pixbuf_new_from_file("stock-close-12.png")
-    pix_autohide = gdk.pixbuf_new_from_file("stock-auto-hide.png")
-    pix_dock = gdk.pixbuf_new_from_file("stock-dock.png")
+    pix_close = gdk.pixbuf_new_from_file("./stock-close-12.png")
+    pix_autohide = gdk.pixbuf_new_from_file("./stock-auto-hide.png")
+    pix_dock = gdk.pixbuf_new_from_file("./stock-dock.png")
 
     def __init__(self, frame=None, item=None):
         gtk.VBox.__init__(self)
@@ -106,7 +106,7 @@ class DockItemContainer(gtk.VBox):
         if self.widget != None:
             self.widget.parent.remove(self.widget)
         self.widget = self.item.content
-
+        
         if self.item.draw_frame:
             if self.border_frame == None:
                 self.border_frame = gtk.Frame()
@@ -121,9 +121,10 @@ class DockItemContainer(gtk.VBox):
             if self.border_frame != None:
                 self.remove(self.border_frame)
                 self.border_frame = None
-            self.pack_start(self.widget, True, True, 0)
+            
+            self.pack_start(self.widget, True, True, 0)            
             self.widget.show()
-
+            
     def update_behavior(self):
         self.btn_close.props.visible = (self.item.behavior & DockItemBehavior.CANT_CLOSE) == 0
         self.header.props.visible = (self.item.behavior & DockItemBehavior.LOCKED) == 0
@@ -147,7 +148,7 @@ class DockItemContainer(gtk.VBox):
             self.frame.get_toplevel().connect("key-release-event", self.header_key_release)
             self.allow_placeholder_docking = True
         elif event.button == 3:
-            self.item.show_dock_popupmenu(args.event.time)
+            self.item.show_dock_popupmenu(event.time)
 
     def header_button_release(self, ob, event):
         if event.button == 1:
@@ -190,9 +191,9 @@ class DockItemContainer(gtk.VBox):
 
     def header_expose(self, ob, event):
         rect = gdk.Rectangle(0, 0, self.header.allocation.width - 1, self.header.allocation.height)
-        gc = self.frame.style.mid_gc[gtk.STATE_ACTIVE]\
-                if self.pointer_hover else self.frame.style.mid_gc[gtk.STATE_NORMAL]
-
+        gc = self.frame.get_style().mid_gc[gtk.STATE_ACTIVE]\
+                if self.pointer_hover else self.frame.get_style().mid_gc[gtk.STATE_NORMAL]        
+          
         self.header.window.draw_rectangle(gc, True, rect.x, rect.y, rect.width, rect.height)
         self.header.window.draw_rectangle(self.frame.style.dark_gc[gtk.STATE_NORMAL], 
                                           False, 

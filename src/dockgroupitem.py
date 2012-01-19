@@ -57,7 +57,7 @@ class DockGroupItem(DockObject):
         return self.item.expand
 
     def queue_resize(self):
-        item.widget.queue_resize()
+        self.item.widget.queue_resize()
 
     def get_dock_target(self, item, px, py, rect=None):        
         
@@ -65,7 +65,8 @@ class DockGroupItem(DockObject):
             rect = self.allocation
 
         dock_delegate, out_rect = None, None
-        is_point_in_rect = True if rect.x <= px <= rect.width and rect.y <= py <= rect.height else False
+        is_point_in_rect = True if rect.x <= px <= rect.x + rect.width and rect.y <= py <= rect.height else False
+        
         if  item != self.item and self.item.visible and is_point_in_rect:
             xdock_margin = int((float(rect.width) * (1.0 - self.frame.ITEM_DOCK_CENTER_AREA)) / 2)
             ydock_margin = int((float(rect.height)* (1.0 - self.frame.ITEM_DOCK_CENTER_AREA)) / 2)
@@ -75,14 +76,14 @@ class DockGroupItem(DockObject):
             if px <= rect.x + xdock_margin and self.parent_group.type != DockGroupType.HORIZONTAL:
                 out_rect = gdk.Rectangle(rect.x, rect.y, xdock_margin, rect.height)
                 pos = DockPosition.LEFT
-            elif px >= rect.width - xdock_margin and self.parent_group.type != DockGroupType.HORIZONTAL:
-                out_rect = gdk.Rectangle(rect.width - xdock_margin, rect.y, xdock_margin, rect.height)
+            elif px >= (rect.x + rect.width) - xdock_margin and self.parent_group.type != DockGroupType.HORIZONTAL:
+                out_rect = gdk.Rectangle((rect.x + rect.width) - xdock_margin, rect.y, xdock_margin, rect.height)
                 pos = DockPosition.RIGHT
             elif py <= rect.y + ydock_margin and self.parent_group.type != DockGroupType.VERTICAL:
                 out_rect = gdk.Rectangle(rect.x, rect.y, rect.width, ydock_margin)
                 pos = DockPosition.TOP
-            elif py >= rect.y - ydock_margin and self.parent_group.type != DockGroupType.VERTICAL:
-                out_rect = gdk.Rectangle(rect.x, rect.y - ydock_margin, rect.width, ydock_margin)
+            elif py >= rect.height - ydock_margin and self.parent_group.type != DockGroupType.VERTICAL:
+                out_rect = gdk.Rectangle(rect.x, rect.height - ydock_margin, rect.width, ydock_margin)
                 pos = DockPosition.BOTTOM
             else:
                 out_rect = gdk.Rectangle(rect.x + xdock_margin,
@@ -110,7 +111,7 @@ class DockGroupItem(DockObject):
 
     @property
     def visible(self):
-        return self.visible_flag and self.status == DockItemStatus.DOCKABLE
+        return self.visible_flag and self._status == DockItemStatus.DOCKABLE
 
     @property
     def status(self):
@@ -126,7 +127,7 @@ class DockGroupItem(DockObject):
 
         if self._status == DockItemStatus.FLOATING:
             if self.float_rect:
-                x, y = self.item.widget.translate_coordinates(self.item.widget.get_toplevel(), 0, 0)
+                #x, y = self.item.widget.translate_coordinates(self.item.widget.get_toplevel(), 0, 0)
                 #win = self.frame.get_toplevel()
 
                 #if win == None:              
@@ -136,31 +137,30 @@ class DockGroupItem(DockObject):
                 #                                    self.allocation.width,
                 #                                    self.allocation.height)
                 self.item.set_float_mode(self.float_rect)
-            elif self._status == DockItemStatus.AUTOHIDE:
+        elif self._status == DockItemStatus.AUTOHIDE:
                 self.set_bar_doc_position()
                 self.item.set_autohide_mode(self.bar_doc_position,
                                              self.get_autohide_size(self.bar_doc_position))
-            else:
-                self.item.reset_mode()
+        else:
+            self.item.reset_mode()
 
-            if old_value == DockItemStatus.DOCKABLE or\
-               self._status == DockItemStatus.DOCKABLE:
-                   if self.parent_group != None:
-                       self.parent_group.update_visible(self)
+        if old_value == DockItemStatus.DOCKABLE or self._status == DockItemStatus.DOCKABLE:
+            if self.parent_group != None:
+                self.parent_group.update_visible(self)
 
     def set_bar_doc_position(self):
         if self.allocation.width < self.allocation.height:
-            mid = self.allocation.left + self.allocation.width / 2
-            if mid > self.frame.allocation.left + self.frame.allocation.width / 2:
-                self.bar_doc_position = gtk.POSITION_RIGHT
+            mid = self.allocation.x + self.allocation.width / 2
+            if mid > self.frame.allocation.x + self.frame.allocation.width / 2:
+                self.bar_doc_position = gtk.POS_RIGHT
             else:
-                self.bar_doc_position = gtk.POSITION_LEFT
+                self.bar_doc_position = gtk.POS_LEFT
         else:
-            mid = self.allocation.top + self.allocation.height / 2
-            if mid > self.frame.allocation.top + self.frame.allocation.height / 2:
-                self.bar_doc_position = gtk.POSITION_BOTTOM
+            mid = self.allocation.y + self.allocation.height / 2
+            if mid > self.frame.allocation.y + self.frame.allocation.height / 2:
+                self.bar_doc_position = gtk.POS_BOTTOM
             else:
-                self.bar_doc_position = gtk.POSITION_TYPE
+                self.bar_doc_position = gtk.POS_TOP
 
     def set_visible(self, value):
         """
@@ -171,7 +171,7 @@ class DockGroupItem(DockObject):
         
         if self.visible_flag != value:
             self.visible_flag = value
-            if self.visible_flag:
+            if self.visible_flag:                
                 self.item.show_widget()
             else:
                 self.item.hide_widget()
@@ -205,7 +205,7 @@ class DockGroupItem(DockObject):
         if self.autohide_size != -1:
             return self.autohide_size
 
-        if pos == gtk.POSITION_LEFT or pos == gtk.POSITION_RIGHT:
+        if pos == gtk.POS_LEFT or pos == gtk.POS_RIGHT:
             return self.allocation.width
         else:
             return self.allocation.height

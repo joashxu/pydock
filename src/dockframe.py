@@ -8,6 +8,7 @@ from docklayout import DockLayout
 from dockgroupitem import DockGroupItem
 from dockitemstatus import DockItemStatus
 from dockposition import DockPosition
+from autohidebox import AutoHideBox
 
 from utils.datastructures import SortedDict
 
@@ -19,7 +20,7 @@ class DockFrame(gtk.HBox):
     ITEM_DOCK_CENTER_AREA = 0.4
     GROUP_DOCK_SEP_SIZE = 40
 
-    def __init__(self, ):
+    def __init__(self):
         """
         """
 
@@ -37,7 +38,7 @@ class DockFrame(gtk.HBox):
 
         self.layouts = SortedDict()        
         self.top_levels = []
-        self.current_layout = ""
+        self._current_layout = ""
         
         # Setting up the dock bar
         self.dockbar_top = DockBar(self, gtk.POS_TOP)
@@ -76,7 +77,6 @@ class DockFrame(gtk.HBox):
         Arguments:
         - `id`:
         """        
-
         for item in self.container.items:            
             if item.id == id:
                 if item.is_position_marker:
@@ -91,25 +91,6 @@ class DockFrame(gtk.HBox):
         
         return new_item
 
-    @property
-    def current_layout(self):
-        """
-        """
-        return self._current_layout
-    
-    @current_layout.setter
-    def current_layout(self, value):
-        """
-        
-        Arguments:
-        - `value`:
-        """
-        if hasattr(self, '_current_layout') and self._current_layout == value:
-            return
-        
-        if self.load_layout(value):
-            self._current_layout = value
-    
     def remove_item(self, item):
         """
         
@@ -117,8 +98,8 @@ class DockFrame(gtk.HBox):
         - `item`:
         """
         
-        #if self.container.layout:
-        #    container.layout.remove_item_rec(item)
+        if self.container.layout:
+            container.layout.remove_item_rec(item)
 
         for group in self.layouts.values:
             group.remote_item_rec(item)
@@ -144,8 +125,8 @@ class DockFrame(gtk.HBox):
     def get_items(self):
         """
         """
-        return (x for x in self.container.items)    
-
+        return (x for x in self.container.items)          
+    
     ## Layout
     #
     
@@ -171,7 +152,6 @@ class DockFrame(gtk.HBox):
         - `name`:
         - `copy_current`:
         """
-        
         dock_layout = DockLayout(self)
         if self.container.layout == None or not copy_current:
             dock_layout = self.get_default_layout()
@@ -229,7 +209,7 @@ class DockFrame(gtk.HBox):
             last_count = len(todock)
             i = 0
             while i < len(todock):
-                it = todock[i]
+                it = todock[i]                
                 if self.add_default_item(group, it) != None:
                     todock.remove(it)
                     i -= 1
@@ -243,6 +223,24 @@ class DockFrame(gtk.HBox):
         
         return group
 
+    @property
+    def current_layout(self):
+        """
+        """
+        return self._current_layout
+    
+    @current_layout.setter
+    def current_layout(self, value):
+        """
+        
+        Arguments:
+        - `value`:
+        """
+        if hasattr(self, '_current_layout') and self._current_layout == value:
+            return
+        
+        if self.load_layout(value):
+            self._current_layout = value
     
     def update_title(self, item):
         """
@@ -275,7 +273,13 @@ class DockFrame(gtk.HBox):
         if gitem == None:
             return False
     
-        return gitem.visible_flag
+        return gitem.parent_group.present(item, give_focus)
+    
+    def get_visible(self, item):
+        gitem = self.container.find_dock_group_item(item.id)
+        if gitem == None:
+            return False
+        return gitem.visible_flag   
     
     def set_visible(self, item, visible):
         """
@@ -303,13 +307,6 @@ class DockFrame(gtk.HBox):
 
         gitem.set_visible(visible)
         self.container.relayout_widgets()
-     
-    def get_visible(self, item):
-        gitem = self.container.find_dock_group_item(item.id)
-        if gitem == None:
-            return False
-        return gitem.visible_flag   
-    
     
     def get_status(self, item):
         """
@@ -351,7 +348,6 @@ class DockFrame(gtk.HBox):
         - `group`:
         - `item`:
         """
-        
         positions = item.default_location.split(';')
         for pos in positions:
             try:
@@ -381,7 +377,7 @@ class DockFrame(gtk.HBox):
                         
                 except Exception, e:
                     continue
-                
+                                
                 dgt = g.add_item(item, dpos, id)
                 dgt.set_visible(item.default_visible)
 
@@ -397,11 +393,11 @@ class DockFrame(gtk.HBox):
         - `x`:
         - `y`:
         """
-        w.parent = self
+        w.set_parent(self)
         w.x = x
         w.y = y
 
-        self.top_levels.add(w)
+        self.top_levels.append(w)
     
     def remove_top_level(self, w):
         """
@@ -412,6 +408,7 @@ class DockFrame(gtk.HBox):
         
         w.unparent()
         self.top_levels.remove(w)
+        self.queue_resize()
     
 
     def show_placeholder(self):
@@ -462,8 +459,8 @@ class DockFrame(gtk.HBox):
         else:
             raise Exception("InvalidOperationException")
         
-    '''
-    def auto_show(self, item, bar, size):
+    
+    def autoshow(self, item, bar, size):
         """
         
         Arguments:
@@ -471,36 +468,36 @@ class DockFrame(gtk.HBox):
         - `bar`:
         - `size`:
         """
-        
         aframe = AutoHideBox(self, item, bar.position, size)
 
+        x, y = 0, 0
         if bar == self.dockbar_left or bar == self.dockbar_right:
-            aframe.height_request = self.allocation.height -\
-                self.dockbar_top.size_request.height -\
-                self.dockbar_bottom.size_request.height
+            aframe.props.height_request = self.allocation.height -\
+                self.dockbar_top.props.height_request -\
+                self.dockbar_bottom.props.height_request
 
-            aframe.width_request = size
-            y = self.dockbar_top.size_request().height
+            aframe.props.width_request = size
+            y = self.dockbar_top.props.height_request
             if bar == self.dockbar_left:
                 x = bar.allocation.width
             else:
-                x = self.allocation.width - bar.size_request().width - size
+                x = self.allocation.width - bar.size_request()[0] - size
         else:
-            aframe.width_request = self.allocation.width -\
-                self.dockbar_left.size_request().width -\
-                self.dockbar_right.size_request().width
+            aframe.props.width_request = self.allocation.width -\
+                self.dockbar_left.props.width_request -\
+                self.dockbar_right.props.width_request
 
-            aframe.height_request = size
-            if bar == dockbar_top:
+            aframe.props.height_request = size
+            if bar == self.dockbar_top:
                 y = bar.allocation.height
             else:
                 y = self.allocation.height - bar.allocation.height - size
-
+        
         self.add_top_level(aframe, x, y)
         aframe.animate_show()
         return aframe
 
-    def auto_hide(self, item, widget, animate):
+    def autohide(self, item, widget, animate):
         """
         
         Arguments:
@@ -508,14 +505,18 @@ class DockFrame(gtk.HBox):
         - `widget`:
         - `animate`:
         """
-        
         if animate:
-            widget.connect("")
+            def frame_autohide_delegate(event):
+                if widget:
+                    self.autohide(item, widget, False)
+                    
+            widget.connect("hide", frame_autohide_delegate)
+            widget.animate_hide()
         else:
             parent = item.widget.parent
             parent.remove(item.widget)
-            remove_top_level(widget)
-    '''
+            self.remove_top_level(widget)
+            widget.destroy()    
     
     def do_size_allocate(self, allocation):
         """
@@ -524,11 +525,10 @@ class DockFrame(gtk.HBox):
         - `allocation`:
         """
         gtk.HBox.do_size_allocate(self, allocation)
-        
         for tl in self.top_levels:
-            r = tl.size_request()
-            tl.size_allocate(gtk.gdk.rectangle(allocation.x + tl.x,
+            width, height = tl.size_request()
+            tl.size_allocate(gtk.gdk.Rectangle(allocation.x + tl.x,
                                                allocation.y + tl.y,
-                                               r.width,
-                                               r.height))
+                                               width,
+                                               height))
    

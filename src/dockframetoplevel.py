@@ -26,7 +26,7 @@ class DockFrameTopLevel(gtk.EventBox):
         Arguments:
         - `value`:
         """
-        x = value
+        self._x = value
         if self.parent != None:
             self.parent.queue_resize()
 
@@ -44,7 +44,7 @@ class DockFrameTopLevel(gtk.EventBox):
         Arguments:
         - `value`:
         """
-        y = value
+        self._y = value
         if self.parent != None:
             self.parent.queue_resize()
     

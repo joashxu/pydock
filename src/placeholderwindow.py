@@ -15,19 +15,24 @@ class PlaceHolderWindow(gtk.Window):
         - `frame`:
         """
         
+        ## Attribute 
+        #
+        self.rx, self.ry, self.rw, self.rh = 0, 0, 0, 0
+        self.anim = 0
+        self.allow_docking = True
+
+        ## Constructor
+        #        
         gtk.Window.__init__(self, gtk.WINDOW_POPUP)
 
         self.props.decorated = False
         self.props.transient_for = frame.get_toplevel()
         self.props.type_hint = gdk.WINDOW_TYPE_HINT_UTILITY
-
+        
         self.realize()
         self.redgc = gdk.GC(self.window)
         self.redgc.set_rgb_fg_color(frame.style.bg[gtk.STATE_SELECTED])
 
-        self.rx, self.ry, self.rw, self.rh = 0, 0, 0, 0
-        self.anim = 0
-        self.allow_docking = True
     
     def create_shape(self, width, height):
         """
@@ -56,7 +61,6 @@ class PlaceHolderWindow(gtk.Window):
 
         self.shape_combine_mask(pm, 0, 0)
 
-
     def do_size_allocate(self, allocation):
         """
         
@@ -64,11 +68,8 @@ class PlaceHolderWindow(gtk.Window):
         - `allocation`:
         """                
         gtk.Window.do_size_allocate(self, allocation)
-
         self.create_shape(allocation.width, allocation.height)
         
-
-
     def do_expose_event(self, args):
         """
         

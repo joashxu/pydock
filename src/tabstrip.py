@@ -272,7 +272,7 @@ class Tab(gtk.EventBox):
         self.add(box)
 
         self.show_all()
-        self.label_width, temp = self.get_size_request()
+        self.label_width, temp = self.size_request()
 
         if self.label_widget != None:
             self.label_widget.ellipsize = old_model
@@ -312,7 +312,7 @@ class Tab(gtk.EventBox):
         Arguments:
         - `req`:
         """
-        req = self.get_child().get_size_request()
+        req.width, req.height = self.get_child().size_request()
         req.width += self.PADDING_HORIZONTAL * 2
         
         if self.active:
@@ -333,10 +333,10 @@ class Tab(gtk.EventBox):
 
         if active:
             rect.y += self.PADDING_TOP_ACTIVE
-            rect.height = self.get_child().get_size_request().height
+            rect.height = self.get_child().size_request().height
         else:
             rect.y += self.PADDING_TOP
-            rect.height = self.get_child().get_size_request().height
+            rect.height = self.get_child().size_request().height
 
         self.get_child().do_size_allocate(rect)
     

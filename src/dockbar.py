@@ -60,12 +60,12 @@ class DockBar(gtk.EventBox):
         - `item`:
         - `size`:
         """
-        it = DockBarItem(self, item, size)        
-        box.pack_start(it, false, false, 0)
+        self.it = DockBarItem(self, item, size)        
+        self.box.pack_start(self.it, False, False, 0)
 
-        it.show_all()
+        self.it.show_all()
 
-        return it
+        return self.it
 
     def remove_item(self, item):
         """
@@ -73,8 +73,7 @@ class DockBar(gtk.EventBox):
         Arguments:
         - `item`:
         """
-        box.remove(item)
-
+        self.box.remove(item)
 
     def update_title(self, item):
         """
